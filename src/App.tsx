@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { Layout } from "@/components/layout/Layout";
 import { Dashboard } from "@/components/dashboard/Dashboard";
+import Tickets from "./pages/Tickets";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,7 +32,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/tickets" element={<div>Tiketi - u razvoju</div>} />
+        <Route path="/tickets" element={<Tickets />} />
         <Route path="/tasks" element={<div>Zadaci - u razvoju</div>} />
         <Route path="/users" element={<div>Korisnici - u razvoju</div>} />
         <Route path="/workers" element={<div>Radnici - u razvoju</div>} />
