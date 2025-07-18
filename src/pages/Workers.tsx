@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, User, Mail, Phone, Building } from 'lucide-react';
+import { Plus, Search, User, Mail, Phone, Building, DollarSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Profile {
@@ -28,7 +28,7 @@ interface Profile {
   updated_at: string;
 }
 
-export default function Users() {
+export default function Workers() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -43,7 +43,7 @@ export default function Users() {
     email: '',
     phone: '',
     company: '',
-    role: 'client' as 'admin' | 'worker' | 'client',
+    role: 'worker' as 'admin' | 'worker',
     hourly_rate: 0,
     position: '',
     is_active: true
@@ -58,14 +58,14 @@ export default function Users() {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('role', 'client')
+        .in('role', ['admin', 'worker'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       setProfiles(data || []);
     } catch (error) {
       console.error('Error fetching profiles:', error);
-      toast({ title: 'Greška', description: 'Neuspešno učitavanje klijenata', variant: 'destructive' });
+      toast({ title: 'Greška', description: 'Neuspešno učitavanje radnika', variant: 'destructive' });
     }
   };
 
@@ -80,7 +80,7 @@ export default function Users() {
           .eq('id', editingProfile.id);
         
         if (error) throw error;
-        toast({ title: 'Uspeh', description: 'Klijent je uspešno ažuriran' });
+        toast({ title: 'Uspeh', description: 'Radnik je uspešno ažuriran' });
       }
       
       fetchProfiles();
@@ -88,7 +88,7 @@ export default function Users() {
       setIsDialogOpen(false);
     } catch (error) {
       console.error('Error saving profile:', error);
-      toast({ title: 'Greška', description: 'Neuspešno čuvanje klijenta', variant: 'destructive' });
+      toast({ title: 'Greška', description: 'Neuspešno čuvanje radnika', variant: 'destructive' });
     }
   };
 
@@ -99,7 +99,7 @@ export default function Users() {
       email: '',
       phone: '',
       company: '',
-      role: 'client',
+      role: 'worker',
       hourly_rate: 0,
       position: '',
       is_active: true
@@ -115,7 +115,7 @@ export default function Users() {
       email: profileData.email,
       phone: profileData.phone || '',
       company: profileData.company || '',
-      role: profileData.role,
+      role: profileData.role as 'admin' | 'worker',
       hourly_rate: profileData.hourly_rate || 0,
       position: profileData.position || '',
       is_active: profileData.is_active
@@ -126,8 +126,7 @@ export default function Users() {
   const getRoleColor = (role: string) => {
     const colors = {
       admin: 'bg-red-100 text-red-800',
-      worker: 'bg-blue-100 text-blue-800',
-      client: 'bg-green-100 text-green-800'
+      worker: 'bg-blue-100 text-blue-800'
     };
     return colors[role as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
@@ -135,8 +134,7 @@ export default function Users() {
   const getRoleLabel = (role: string) => {
     const labels = {
       admin: 'Administrator',
-      worker: 'Radnik',
-      client: 'Klijent'
+      worker: 'Radnik'
     };
     return labels[role as keyof typeof labels] || role;
   };
@@ -146,12 +144,13 @@ export default function Users() {
       profile.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       profile.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       profile.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      profile.company?.toLowerCase().includes(searchTerm.toLowerCase());
+      profile.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      profile.position?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || profile.role === roleFilter;
     return matchesSearch && matchesRole;
   });
 
-  // Only admins can see and edit users
+  // Only admins can see and edit workers
   if (profile?.role !== 'admin') {
     return (
       <div className="flex items-center justify-center h-64">
@@ -163,14 +162,14 @@ export default function Users() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Klijenti</h1>
+        <h1 className="text-3xl font-bold">Radnici</h1>
       </div>
 
       <div className="flex gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Pretraži klijente..."
+            placeholder="Pretraži radnike..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -181,26 +180,27 @@ export default function Users() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Svi klijenti</SelectItem>
-            <SelectItem value="client">Klijent</SelectItem>
+            <SelectItem value="all">Sve uloge</SelectItem>
+            <SelectItem value="admin">Administrator</SelectItem>
+            <SelectItem value="worker">Radnik</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredProfiles.map((userProfile) => (
-          <Card key={userProfile.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleEdit(userProfile)}>
+        {filteredProfiles.map((workerProfile) => (
+          <Card key={workerProfile.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleEdit(workerProfile)}>
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <User className="w-5 h-5" />
-                  {userProfile.first_name} {userProfile.last_name}
+                  {workerProfile.first_name} {workerProfile.last_name}
                 </CardTitle>
                 <div className="flex gap-2">
-                  <Badge className={getRoleColor(userProfile.role)}>
-                    {getRoleLabel(userProfile.role)}
+                  <Badge className={getRoleColor(workerProfile.role)}>
+                    {getRoleLabel(workerProfile.role)}
                   </Badge>
-                  {!userProfile.is_active && (
+                  {!workerProfile.is_active && (
                     <Badge variant="outline" className="text-red-600 border-red-300">
                       Neaktivan
                     </Badge>
@@ -212,32 +212,33 @@ export default function Users() {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Mail className="w-4 h-4" />
-                  <span>{userProfile.email}</span>
+                  <span>{workerProfile.email}</span>
                 </div>
-                {userProfile.phone && (
+                {workerProfile.phone && (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Phone className="w-4 h-4" />
-                    <span>{userProfile.phone}</span>
+                    <span>{workerProfile.phone}</span>
                   </div>
                 )}
-                {userProfile.company && (
+                {workerProfile.company && (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Building className="w-4 h-4" />
-                    <span>{userProfile.company}</span>
+                    <span>{workerProfile.company}</span>
                   </div>
                 )}
-                {userProfile.position && (
+                {workerProfile.position && (
                   <div className="text-muted-foreground">
-                    <span className="font-medium">Pozicija:</span> {userProfile.position}
+                    <span className="font-medium">Pozicija:</span> {workerProfile.position}
                   </div>
                 )}
-                {userProfile.hourly_rate > 0 && (
-                  <div className="text-muted-foreground">
-                    <span className="font-medium">Satnica:</span> {userProfile.hourly_rate} RSD/h
+                {workerProfile.hourly_rate > 0 && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <DollarSign className="w-4 h-4" />
+                    <span className="font-medium">{workerProfile.hourly_rate.toLocaleString('sr-RS')} RSD/h</span>
                   </div>
                 )}
                 <div className="text-xs text-muted-foreground pt-2">
-                  Kreiran: {new Date(userProfile.created_at).toLocaleDateString('sr-RS')}
+                  Kreiran: {new Date(workerProfile.created_at).toLocaleDateString('sr-RS')}
                 </div>
               </div>
             </CardContent>
@@ -247,7 +248,7 @@ export default function Users() {
           <div className="col-span-full">
             <Card>
               <CardContent className="text-center py-8">
-                <p className="text-muted-foreground">Nema klijenata za prikaz</p>
+                <p className="text-muted-foreground">Nema radnika za prikaz</p>
               </CardContent>
             </Card>
           </div>
@@ -257,7 +258,7 @@ export default function Users() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Uredi klijenta</DialogTitle>
+            <DialogTitle>Uredi radnika</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -311,7 +312,6 @@ export default function Users() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="client">Klijent</SelectItem>
                     <SelectItem value="worker">Radnik</SelectItem>
                     <SelectItem value="admin">Administrator</SelectItem>
                   </SelectContent>
@@ -342,7 +342,7 @@ export default function Users() {
                 checked={formData.is_active}
                 onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
               />
-              <Label htmlFor="is_active">Aktivan korisnik</Label>
+              <Label htmlFor="is_active">Aktivan radnik</Label>
             </div>
             <div className="flex gap-2">
               <Button type="submit">Ažuriraj</Button>

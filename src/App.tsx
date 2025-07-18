@@ -10,10 +10,12 @@ import { Dashboard } from "@/components/dashboard/Dashboard";
 import Tickets from "./pages/Tickets";
 import Tasks from "./pages/Tasks";
 import Users from "./pages/Users";
+import Workers from "./pages/Workers";
 import Services from "./pages/Services";
 import Invoices from "./pages/Invoices";
 import Wiki from "./pages/Wiki";
 import Chat from "./pages/Chat";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,11 +43,12 @@ function AppRoutes() {
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/users" element={<Users />} />
-        <Route path="/workers" element={<Users />} />
+        <Route path="/workers" element={<Workers />} />
         <Route path="/services" element={<Services />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/wiki" element={<Wiki />} />
         <Route path="/chat" element={<Chat />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>

@@ -16,7 +16,8 @@ import {
   Menu,
   X,
   Building2,
-  Receipt
+  Receipt,
+  Cog
 } from 'lucide-react';
 
 const navigationItems = [
@@ -36,7 +37,7 @@ const navigationItems = [
     icon: CheckSquare 
   },
   { 
-    name: 'Korisnici', 
+    name: 'Klijenti', 
     href: '/users', 
     icon: Users 
   },
@@ -64,6 +65,11 @@ const navigationItems = [
     name: 'Chat', 
     href: '/chat', 
     icon: MessageSquare 
+  },
+  { 
+    name: 'Podešavanja', 
+    href: '/settings', 
+    icon: Cog 
   },
 ];
 

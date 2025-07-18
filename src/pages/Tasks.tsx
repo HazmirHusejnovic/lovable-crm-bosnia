@@ -126,10 +126,18 @@ export default function Tasks() {
     e.preventDefault();
     
     try {
+      // Convert empty strings to null for UUID fields
+      const taskData = {
+        ...formData,
+        client_id: formData.client_id || null,
+        assigned_worker_id: formData.assigned_worker_id || null,
+        service_id: formData.service_id || null,
+      };
+
       if (editingTask) {
         const { error } = await supabase
           .from('tasks')
-          .update(formData)
+          .update(taskData)
           .eq('id', editingTask.id);
         
         if (error) throw error;
@@ -137,7 +145,7 @@ export default function Tasks() {
       } else {
         const { error } = await supabase
           .from('tasks')
-          .insert([formData]);
+          .insert([taskData]);
         
         if (error) throw error;
         toast({ title: 'Uspeh', description: 'Zadatak je uspešno kreiran' });
