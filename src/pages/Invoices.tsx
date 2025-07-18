@@ -16,7 +16,7 @@ interface Invoice {
   id: string;
   invoice_number: string;
   client_id: string;
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+  status: 'draft' | 'sent' | 'paid' | 'cancelled';
   subtotal: number;
   tax_rate: number;
   tax_amount: number;
@@ -48,7 +48,7 @@ export default function Invoices() {
 
   const [formData, setFormData] = useState({
     client_id: '',
-    status: 'draft' as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
+    status: 'draft' as 'draft' | 'sent' | 'paid' | 'cancelled',
     subtotal: 0,
     tax_rate: 17.00,
     due_date: '',
@@ -115,9 +115,15 @@ export default function Invoices() {
         if (error) throw error;
         toast({ title: 'Uspeh', description: 'Faktura je uspešno ažurirana' });
       } else {
+        // Generate invoice number using database function
+        const { data: invoiceNumber, error: numberError } = await supabase
+          .rpc('generate_invoice_number');
+        
+        if (numberError) throw numberError;
+        
         const { error } = await supabase
           .from('invoices')
-          .insert([invoiceData]);
+          .insert([{ ...invoiceData, invoice_number: invoiceNumber }]);
         
         if (error) throw error;
         toast({ title: 'Uspeh', description: 'Faktura je uspešno kreirana' });
@@ -162,7 +168,6 @@ export default function Invoices() {
       draft: 'bg-gray-100 text-gray-800',
       sent: 'bg-blue-100 text-blue-800',
       paid: 'bg-green-100 text-green-800',
-      overdue: 'bg-red-100 text-red-800',
       cancelled: 'bg-red-100 text-red-800'
     };
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
@@ -173,7 +178,6 @@ export default function Invoices() {
       draft: 'Nacrt',
       sent: 'Poslata',
       paid: 'Plaćena',
-      overdue: 'Dospeće prošlo',
       cancelled: 'Otkazana'
     };
     return labels[status as keyof typeof labels] || status;
@@ -232,7 +236,6 @@ export default function Invoices() {
                         <SelectItem value="draft">Nacrt</SelectItem>
                         <SelectItem value="sent">Poslata</SelectItem>
                         <SelectItem value="paid">Plaćena</SelectItem>
-                        <SelectItem value="overdue">Dospeće prošlo</SelectItem>
                         <SelectItem value="cancelled">Otkazana</SelectItem>
                       </SelectContent>
                     </Select>
@@ -325,7 +328,6 @@ export default function Invoices() {
             <SelectItem value="draft">Nacrt</SelectItem>
             <SelectItem value="sent">Poslata</SelectItem>
             <SelectItem value="paid">Plaćena</SelectItem>
-            <SelectItem value="overdue">Dospeće prošlo</SelectItem>
             <SelectItem value="cancelled">Otkazana</SelectItem>
           </SelectContent>
         </Select>
