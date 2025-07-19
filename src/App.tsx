@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { Layout } from "@/components/layout/Layout";
-import { Dashboard } from "@/components/dashboard/Dashboard";
+import Dashboard from "@/components/dashboard/Dashboard";
 import Tickets from "./pages/Tickets";
 import Tasks from "./pages/Tasks";
 import Users from "./pages/Users";

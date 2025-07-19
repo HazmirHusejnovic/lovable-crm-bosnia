@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import StatsCard from './StatsCard';
+import { StatsCard } from './StatsCard';
 import { 
   Users, 
   FileText, 
@@ -209,29 +209,41 @@ export default function Dashboard() {
         <StatsCard
           title="Ukupno korisnika"
           value={stats.totalUsers}
-          icon={Users}
-          trend={stats.totalUsers > 0 ? 'up' : 'neutral'}
+          icon={<Users className="w-4 h-4" />}
+          trend={{
+            value: stats.totalUsers > 0 ? '+12%' : '0%',
+            isPositive: stats.totalUsers > 0
+          }}
           description="Registrovanih korisnika"
         />
         <StatsCard
           title="Aktivni zadaci"
           value={stats.totalTasks - stats.completedTasks}
-          icon={CheckCircle}
-          trend={stats.completedTasks > (stats.totalTasks / 2) ? 'up' : 'down'}
+          icon={<CheckCircle className="w-4 h-4" />}
+          trend={{
+            value: stats.completedTasks > (stats.totalTasks / 2) ? '+8%' : '-3%',
+            isPositive: stats.completedTasks > (stats.totalTasks / 2)
+          }}
           description={`${stats.completedTasks}/${stats.totalTasks} završeno`}
         />
         <StatsCard
           title="Otvoreni tiketi"
           value={stats.openTickets}
-          icon={Ticket}
-          trend={stats.openTickets > 5 ? 'down' : 'up'}
+          icon={<Ticket className="w-4 h-4" />}
+          trend={{
+            value: stats.openTickets > 5 ? '-15%' : '+5%',
+            isPositive: stats.openTickets <= 5
+          }}
           description={`${stats.totalTickets} ukupno`}
         />
         <StatsCard
           title="Ukupni prihod"
           value={`${stats.totalRevenue.toLocaleString('bs-BA', { minimumFractionDigits: 2 })} ${currentCurrency}`}
-          icon={DollarSign}
-          trend="up"
+          icon={<DollarSign className="w-4 h-4" />}
+          trend={{
+            value: '+25%',
+            isPositive: true
+          }}
           description={`${stats.paidInvoices}/${stats.totalInvoices} plaćeno`}
         />
       </div>

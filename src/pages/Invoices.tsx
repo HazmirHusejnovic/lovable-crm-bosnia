@@ -114,7 +114,11 @@ export default function Invoices() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setInvoices(data || []);
+      const invoicesWithCurrency = (data || []).map((invoice: any) => ({
+        ...invoice,
+        currency: invoice.currency || 'BAM'
+      })) as Invoice[];
+      setInvoices(invoicesWithCurrency);
     } catch (error) {
       console.error('Error fetching invoices:', error);
       toast({ title: 'Greška', description: 'Neuspešno učitavanje faktura', variant: 'destructive' });
