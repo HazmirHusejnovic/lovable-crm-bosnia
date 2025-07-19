@@ -81,6 +81,17 @@ export default function Workers() {
         
         if (error) throw error;
         toast({ title: 'Uspeh', description: 'Radnik je uspešno ažuriran' });
+      } else {
+        // Create new worker profile - only insert to profiles table
+        const { error } = await supabase
+          .from('profiles')
+          .insert([{
+            ...formData,
+            user_id: crypto.randomUUID() // Temporary user_id for now
+          }]);
+        
+        if (error) throw error;
+        toast({ title: 'Uspeh', description: 'Radnik je uspešno kreiran' });
       }
       
       fetchProfiles();
@@ -163,6 +174,110 @@ export default function Workers() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Radnici</h1>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={resetForm}>
+              <Plus className="w-4 h-4 mr-2" />
+              Novi radnik
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingProfile ? 'Uredi radnika' : 'Novi radnik'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Ime</Label>
+                  <Input
+                    value={formData.first_name}
+                    onChange={(e) => setFormData({...formData, first_name: e.target.value})}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label>Prezime</Label>
+                  <Input
+                    value={formData.last_name}
+                    onChange={(e) => setFormData({...formData, last_name: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Telefon</Label>
+                  <Input
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label>Kompanija</Label>
+                  <Input
+                    value={formData.company}
+                    onChange={(e) => setFormData({...formData, company: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Uloga</Label>
+                  <Select value={formData.role} onValueChange={(value: any) => setFormData({...formData, role: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="worker">Radnik</SelectItem>
+                      <SelectItem value="admin">Administrator</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Pozicija</Label>
+                  <Input
+                    value={formData.position}
+                    onChange={(e) => setFormData({...formData, position: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Satnica (KM)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={formData.hourly_rate}
+                  onChange={(e) => setFormData({...formData, hourly_rate: parseFloat(e.target.value) || 0})}
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="is_active"
+                  checked={formData.is_active}
+                  onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+                />
+                <Label htmlFor="is_active">Aktivan radnik</Label>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit">{editingProfile ? 'Ažuriraj' : 'Kreiraj'}</Button>
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Otkaži
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex gap-4 mb-6">
@@ -231,12 +346,12 @@ export default function Workers() {
                     <span className="font-medium">Pozicija:</span> {workerProfile.position}
                   </div>
                 )}
-                {workerProfile.hourly_rate > 0 && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <DollarSign className="w-4 h-4" />
-                    <span className="font-medium">{workerProfile.hourly_rate.toLocaleString('sr-RS')} RSD/h</span>
-                  </div>
-                )}
+                  {workerProfile.hourly_rate > 0 && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <DollarSign className="w-4 h-4" />
+                      <span className="font-medium">{workerProfile.hourly_rate.toLocaleString('bs-BA')} KM/h</span>
+                    </div>
+                  )}
                 <div className="text-xs text-muted-foreground pt-2">
                   Kreiran: {new Date(workerProfile.created_at).toLocaleDateString('sr-RS')}
                 </div>
@@ -255,104 +370,6 @@ export default function Workers() {
         )}
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Uredi radnika</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Ime</Label>
-                <Input
-                  value={formData.first_name}
-                  onChange={(e) => setFormData({...formData, first_name: e.target.value})}
-                  required
-                />
-              </div>
-              <div>
-                <Label>Prezime</Label>
-                <Input
-                  value={formData.last_name}
-                  onChange={(e) => setFormData({...formData, last_name: e.target.value})}
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Telefon</Label>
-                <Input
-                  value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label>Kompanija</Label>
-                <Input
-                  value={formData.company}
-                  onChange={(e) => setFormData({...formData, company: e.target.value})}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Uloga</Label>
-                <Select value={formData.role} onValueChange={(value: any) => setFormData({...formData, role: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="worker">Radnik</SelectItem>
-                    <SelectItem value="admin">Administrator</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Pozicija</Label>
-                <Input
-                  value={formData.position}
-                  onChange={(e) => setFormData({...formData, position: e.target.value})}
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Satnica (RSD)</Label>
-              <Input
-                type="number"
-                min="0"
-                step="50"
-                value={formData.hourly_rate}
-                onChange={(e) => setFormData({...formData, hourly_rate: parseFloat(e.target.value) || 0})}
-              />
-            </div>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="is_active"
-                checked={formData.is_active}
-                onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
-              />
-              <Label htmlFor="is_active">Aktivan radnik</Label>
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit">Ažuriraj</Button>
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Otkaži
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

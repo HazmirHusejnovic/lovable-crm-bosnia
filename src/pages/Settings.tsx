@@ -49,12 +49,32 @@ export default function Settings() {
     daily_summary: false
   });
 
+  const [systemSettings, setSystemSettings] = useState({
+    auto_backup: true,
+    backup_frequency: 'daily',
+    max_file_size: 10,
+    session_timeout: 30,
+    debug_mode: false,
+    api_rate_limit: 1000
+  });
+
+  const [securitySettings, setSecuritySettings] = useState({
+    two_factor_auth: false,
+    password_expiry: 90,
+    max_login_attempts: 5,
+    ip_whitelist: '',
+    audit_logs: true,
+    auto_logout: 60
+  });
+
   const [userSettings, setUserSettings] = useState({
     theme: 'system',
     language: 'sr-RS',
     timezone: 'Europe/Sarajevo',
     date_format: 'dd.MM.yyyy',
-    time_format: '24h'
+    time_format: '24h',
+    items_per_page: 20,
+    dashboard_widgets: true
   });
 
   const handleSaveCompanySettings = async () => {
@@ -85,6 +105,24 @@ export default function Settings() {
     }
   };
 
+  const handleSaveSystemSettings = async () => {
+    try {
+      localStorage.setItem('system_settings', JSON.stringify(systemSettings));
+      toast({ title: 'Uspeh', description: 'Sistemska podešavanja su sačuvana' });
+    } catch (error) {
+      toast({ title: 'Greška', description: 'Neuspešno čuvanje podešavanja', variant: 'destructive' });
+    }
+  };
+
+  const handleSaveSecuritySettings = async () => {
+    try {
+      localStorage.setItem('security_settings', JSON.stringify(securitySettings));
+      toast({ title: 'Uspeh', description: 'Sigurnosna podešavanja su sačuvana' });
+    } catch (error) {
+      toast({ title: 'Greška', description: 'Neuspešno čuvanje podešavanja', variant: 'destructive' });
+    }
+  };
+
   const handleSaveUserSettings = async () => {
     try {
       localStorage.setItem('user_settings', JSON.stringify(userSettings));
@@ -98,6 +136,8 @@ export default function Settings() {
     // Load settings from localStorage
     const savedCompanySettings = localStorage.getItem('company_settings');
     const savedInvoiceSettings = localStorage.getItem('invoice_settings');
+    const savedSystemSettings = localStorage.getItem('system_settings');
+    const savedSecuritySettings = localStorage.getItem('security_settings');
     const savedNotificationSettings = localStorage.getItem('notification_settings');
     const savedUserSettings = localStorage.getItem('user_settings');
 
@@ -106,6 +146,12 @@ export default function Settings() {
     }
     if (savedInvoiceSettings) {
       setInvoiceSettings(JSON.parse(savedInvoiceSettings));
+    }
+    if (savedSystemSettings) {
+      setSystemSettings(JSON.parse(savedSystemSettings));
+    }
+    if (savedSecuritySettings) {
+      setSecuritySettings(JSON.parse(savedSecuritySettings));
     }
     if (savedNotificationSettings) {
       setNotificationSettings(JSON.parse(savedNotificationSettings));
@@ -134,9 +180,11 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="company" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="company">Kompanija</TabsTrigger>
           <TabsTrigger value="invoices">Fakture</TabsTrigger>
+          <TabsTrigger value="system">Sistem</TabsTrigger>
+          <TabsTrigger value="security">Sigurnost</TabsTrigger>
           <TabsTrigger value="notifications">Notifikacije</TabsTrigger>
           <TabsTrigger value="user">Korisnik</TabsTrigger>
         </TabsList>
@@ -342,6 +390,165 @@ export default function Settings() {
               </div>
               
               <Button onClick={handleSaveInvoiceSettings}>Sačuvaj podešavanja faktura</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="system">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <SettingsIcon className="w-5 h-5" />
+                Sistemska podešavanja
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-base">Automatske rezervne kopije</Label>
+                    <p className="text-sm text-muted-foreground">Automatski pravi rezervne kopije podataka</p>
+                  </div>
+                  <Switch
+                    checked={systemSettings.auto_backup}
+                    onCheckedChange={(checked) => setSystemSettings({...systemSettings, auto_backup: checked})}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Frekvencija rezervnih kopija</Label>
+                    <Select value={systemSettings.backup_frequency} onValueChange={(value) => setSystemSettings({...systemSettings, backup_frequency: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hourly">Svakih sat vremena</SelectItem>
+                        <SelectItem value="daily">Dnevno</SelectItem>
+                        <SelectItem value="weekly">Sedmično</SelectItem>
+                        <SelectItem value="monthly">Mesečno</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Maksimalna veličina datoteke (MB)</Label>
+                    <Input
+                      type="number"
+                      value={systemSettings.max_file_size}
+                      onChange={(e) => setSystemSettings({...systemSettings, max_file_size: parseInt(e.target.value) || 10})}
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Timeout sesije (minuti)</Label>
+                    <Input
+                      type="number"
+                      value={systemSettings.session_timeout}
+                      onChange={(e) => setSystemSettings({...systemSettings, session_timeout: parseInt(e.target.value) || 30})}
+                    />
+                  </div>
+                  <div>
+                    <Label>API rate limit (zahtevi/sat)</Label>
+                    <Input
+                      type="number"
+                      value={systemSettings.api_rate_limit}
+                      onChange={(e) => setSystemSettings({...systemSettings, api_rate_limit: parseInt(e.target.value) || 1000})}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-base">Debug mod</Label>
+                    <p className="text-sm text-muted-foreground">Omogući detaljno logovanje za dijagnostiku</p>
+                  </div>
+                  <Switch
+                    checked={systemSettings.debug_mode}
+                    onCheckedChange={(checked) => setSystemSettings({...systemSettings, debug_mode: checked})}
+                  />
+                </div>
+              </div>
+              
+              <Button onClick={handleSaveSystemSettings}>Sačuvaj sistemska podešavanja</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="security">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Sigurnosna podešavanja
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-base">Dvofaktorska autentifikacija</Label>
+                    <p className="text-sm text-muted-foreground">Dodatna sigurnost sa SMS ili aplikacijom</p>
+                  </div>
+                  <Switch
+                    checked={securitySettings.two_factor_auth}
+                    onCheckedChange={(checked) => setSecuritySettings({...securitySettings, two_factor_auth: checked})}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Istek lozinke (dani)</Label>
+                    <Input
+                      type="number"
+                      value={securitySettings.password_expiry}
+                      onChange={(e) => setSecuritySettings({...securitySettings, password_expiry: parseInt(e.target.value) || 90})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Max pokušaja prijavljivanja</Label>
+                    <Input
+                      type="number"
+                      value={securitySettings.max_login_attempts}
+                      onChange={(e) => setSecuritySettings({...securitySettings, max_login_attempts: parseInt(e.target.value) || 5})}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>IP whitelist (jedan po liniji)</Label>
+                  <Textarea
+                    value={securitySettings.ip_whitelist}
+                    onChange={(e) => setSecuritySettings({...securitySettings, ip_whitelist: e.target.value})}
+                    placeholder="192.168.1.1&#10;10.0.0.1&#10;..."
+                    rows={4}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-base">Audit logovi</Label>
+                      <p className="text-sm text-muted-foreground">Logiraj sve korisničke aktivnosti</p>
+                    </div>
+                    <Switch
+                      checked={securitySettings.audit_logs}
+                      onCheckedChange={(checked) => setSecuritySettings({...securitySettings, audit_logs: checked})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Auto logout (minuti)</Label>
+                    <Input
+                      type="number"
+                      value={securitySettings.auto_logout}
+                      onChange={(e) => setSecuritySettings({...securitySettings, auto_logout: parseInt(e.target.value) || 60})}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <Button onClick={handleSaveSecuritySettings}>Sačuvaj sigurnosna podešavanja</Button>
             </CardContent>
           </Card>
         </TabsContent>

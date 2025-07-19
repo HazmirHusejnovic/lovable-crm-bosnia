@@ -314,12 +314,13 @@ export default function Tasks() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Dodijeli radniku</Label>
+                    <Label>Dodijeli radniku (opcional)</Label>
                     <Select value={formData.assigned_worker_id} onValueChange={(value) => setFormData({...formData, assigned_worker_id: value})}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Izaberi radnika" />
+                        <SelectValue placeholder="Ostavi prazno za self-assign" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="">Nema dodjele - radnik može preuzeti</SelectItem>
                         {profiles.map(worker => (
                           <SelectItem key={worker.id} value={worker.id}>
                             {worker.first_name} {worker.last_name}

@@ -591,7 +591,7 @@ export default function Invoices() {
                 <div className="flex gap-6 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <DollarSign className="w-4 h-4" />
-                    <span>{invoice.total_amount.toLocaleString('bs-BA', { minimumFractionDigits: 2 })} {invoice.currency}</span>
+                    <span>{invoice.total_amount.toLocaleString('bs-BA', { minimumFractionDigits: 2 })} {invoice.currency === 'BAM' ? 'KM' : invoice.currency}</span>
                   </div>
                   {invoice.due_date && (
                     <div className="flex items-center gap-1">
