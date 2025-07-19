@@ -83,12 +83,12 @@ export function Sidebar() {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
-        <h1 className="text-xl font-bold text-sidebar-foreground">CRM Sistem</h1>
+      <div className="flex items-center justify-between p-4 border-b border-slate-700 bg-slate-800">
+        <h1 className="text-xl font-bold text-white">CRM Sistem</h1>
         <Button
           variant="ghost"
           size="icon"
-          className="md:hidden text-sidebar-foreground"
+          className="md:hidden text-white"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
           {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -102,10 +102,10 @@ export function Sidebar() {
             to={item.href}
             className={({ isActive }) =>
               cn(
-                "flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  ? "bg-blue-600 text-white shadow-lg"
+                  : "text-slate-300 hover:bg-slate-700 hover:text-white"
               )
             }
             onClick={() => setIsMobileMenuOpen(false)}
@@ -116,18 +116,18 @@ export function Sidebar() {
         ))}
       </nav>
       
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-slate-700 bg-slate-800">
         <div className="flex items-center space-x-3 mb-4">
-          <div className="w-8 h-8 bg-sidebar-accent rounded-full flex items-center justify-center">
-            <span className="text-sm font-medium text-sidebar-accent-foreground">
+          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+            <span className="text-sm font-medium text-white">
               {profile?.first_name?.[0]}{profile?.last_name?.[0]}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">
+            <p className="text-sm font-medium text-white truncate">
               {profile?.first_name} {profile?.last_name}
             </p>
-            <p className="text-xs text-sidebar-foreground/70 truncate">
+            <p className="text-xs text-slate-400 truncate">
               {profile?.role === 'admin' && 'Administrator'}
               {profile?.role === 'worker' && 'Radnik'}
               {profile?.role === 'client' && 'Klijent'}
@@ -137,7 +137,7 @@ export function Sidebar() {
         
         <Button
           variant="ghost"
-          className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className="w-full justify-start text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
           onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4 mr-2" />
@@ -151,19 +151,19 @@ export function Sidebar() {
     <>
       {/* Desktop Sidebar */}
       <div className="hidden md:flex md:w-64 md:flex-col">
-        <div className="flex flex-col flex-1 min-h-0 bg-sidebar-background">
+        <div className="flex flex-col flex-1 min-h-0 bg-slate-900 border-r border-slate-700 shadow-lg">
           <SidebarContent />
         </div>
       </div>
       
       {/* Mobile Sidebar */}
       <div className="md:hidden">
-        <div className="flex items-center justify-between p-4 bg-sidebar-background">
-          <h1 className="text-xl font-bold text-sidebar-foreground">CRM Sistem</h1>
+        <div className="flex items-center justify-between p-4 bg-slate-900">
+          <h1 className="text-xl font-bold text-white">CRM Sistem</h1>
           <Button
             variant="ghost"
             size="icon"
-            className="text-sidebar-foreground"
+            className="text-white"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             <Menu className="h-5 w-5" />
@@ -171,7 +171,7 @@ export function Sidebar() {
         </div>
         
         {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-50 bg-sidebar-background">
+          <div className="fixed inset-0 z-50 bg-slate-900">
             <SidebarContent />
           </div>
         )}

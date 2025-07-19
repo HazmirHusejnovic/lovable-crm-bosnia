@@ -310,9 +310,13 @@ export default function Chat() {
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                      {message.message}
-                    </p>
+                     <p className={`text-sm whitespace-pre-wrap leading-relaxed ${
+                       message.sender_id === profile?.id 
+                         ? 'text-primary-foreground' 
+                         : 'text-foreground'
+                     }`}>
+                       {message.message}
+                     </p>
                     <div className="flex items-center gap-1 mt-2 text-xs opacity-70">
                       <Clock className="w-3 h-3" />
                       <span>{new Date(message.created_at).toLocaleString('bs-BA')}</span>

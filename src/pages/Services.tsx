@@ -174,7 +174,11 @@ export default function Services() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Cena (RSD)</Label>
+                    <Label>Cena ({(() => {
+                      const settings = localStorage.getItem('invoice_settings');
+                      const currency = settings ? JSON.parse(settings).default_currency : 'BAM';
+                      return currency === 'BAM' ? 'KM' : currency;
+                    })()})</Label>
                     <Input
                       type="number"
                       min="0"
@@ -276,7 +280,11 @@ export default function Services() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-lg font-semibold">
                   <DollarSign className="w-5 h-5" />
-                  <span>{service.price.toLocaleString('sr-RS')} RSD</span>
+                  <span>{service.price.toLocaleString('bs-BA', { minimumFractionDigits: 2 })} {(() => {
+                    const settings = localStorage.getItem('invoice_settings');
+                    const currency = settings ? JSON.parse(settings).default_currency : 'BAM';
+                    return currency === 'BAM' ? 'KM' : currency;
+                  })()}</span>
                   {service.service_type === 'hourly' && (
                     <span className="text-sm text-muted-foreground">/sat</span>
                   )}
