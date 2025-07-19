@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -40,24 +41,26 @@ export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchMessages();
-    fetchProfiles();
-    
-    // Set up real-time subscription
-    const channel = supabase
-      .channel('chat_messages')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'chat_messages' },
-        () => {
-          fetchMessages();
-        }
-      )
-      .subscribe();
+    if (profile?.id) {
+      fetchMessages();
+      fetchProfiles();
+      
+      // Set up real-time subscription
+      const channel = supabase
+        .channel('chat_messages')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'chat_messages' },
+          () => {
+            fetchMessages();
+          }
+        )
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [profile?.id]);
 
   useEffect(() => {
     scrollToBottom();
@@ -68,8 +71,10 @@ export default function Chat() {
   };
 
   const fetchMessages = async () => {
+    if (!profile?.id) return;
+    
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('chat_messages')
         .select(`
           *,
@@ -77,6 +82,18 @@ export default function Chat() {
           receiver:profiles!chat_messages_receiver_id_fkey(first_name, last_name)
         `)
         .order('created_at', { ascending: true });
+
+      // Ako nije grupna poruka i ima odabranog primaoca, filtriraj poruke
+      if (!isGroupMessage && selectedReceiver) {
+        query = query.or(`and(sender_id.eq.${profile.id},receiver_id.eq.${selectedReceiver}),and(sender_id.eq.${selectedReceiver},receiver_id.eq.${profile.id})`);
+      } else if (isGroupMessage) {
+        query = query.eq('is_group_message', true);
+      } else {
+        // Prikaži sve poruke za korisnika
+        query = query.or(`sender_id.eq.${profile.id},receiver_id.eq.${profile.id},is_group_message.eq.true`);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setMessages(data || []);
@@ -87,11 +104,13 @@ export default function Chat() {
   };
 
   const fetchProfiles = async () => {
+    if (!profile?.id) return;
+    
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, role')
-        .neq('id', profile?.id)
+        .neq('id', profile.id)
         .order('first_name');
 
       if (error) throw error;
@@ -104,13 +123,19 @@ export default function Chat() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !profile?.id) return;
+
+    // Validacija: za privatne poruke mora biti odabran primalac
+    if (!isGroupMessage && !selectedReceiver) {
+      toast({ title: 'Greška', description: 'Molimo odaberite osobu za privatnu poruku', variant: 'destructive' });
+      return;
+    }
 
     try {
       const messageData = {
         message: newMessage.trim(),
-        sender_id: profile?.id,
-        receiver_id: isGroupMessage ? null : selectedReceiver || null,
+        sender_id: profile.id,
+        receiver_id: isGroupMessage ? null : selectedReceiver,
         is_group_message: isGroupMessage
       };
 
@@ -146,14 +171,11 @@ export default function Chat() {
     return labels[role as keyof typeof labels] || role;
   };
 
-  const filteredMessages = messages.filter(message => {
-    if (message.is_group_message) return true;
-    
-    return (
-      (message.sender_id === profile?.id && message.receiver_id === selectedReceiver) ||
-      (message.sender_id === selectedReceiver && message.receiver_id === profile?.id)
-    );
-  });
+  const getSelectedReceiverName = () => {
+    if (!selectedReceiver) return '';
+    const person = profiles.find(p => p.id === selectedReceiver);
+    return person ? `${person.first_name} ${person.last_name}` : '';
+  };
 
   return (
     <div className="space-y-6">
@@ -162,7 +184,7 @@ export default function Chat() {
       </div>
 
       <div className="grid lg:grid-cols-4 gap-6">
-        {/* Contacts/Settings Sidebar */}
+        {/* Sidebar */}
         <div className="lg:col-span-1">
           <Card>
             <CardHeader>
@@ -178,7 +200,10 @@ export default function Chat() {
                       id="private"
                       name="messageType"
                       checked={!isGroupMessage}
-                      onChange={() => setIsGroupMessage(false)}
+                      onChange={() => {
+                        setIsGroupMessage(false);
+                        fetchMessages();
+                      }}
                     />
                     <label htmlFor="private" className="text-sm">Privatna poruka</label>
                   </div>
@@ -188,7 +213,11 @@ export default function Chat() {
                       id="group"
                       name="messageType"
                       checked={isGroupMessage}
-                      onChange={() => setIsGroupMessage(true)}
+                      onChange={() => {
+                        setIsGroupMessage(true);
+                        setSelectedReceiver('');
+                        fetchMessages();
+                      }}
                     />
                     <label htmlFor="group" className="text-sm">Grupna poruka</label>
                   </div>
@@ -198,7 +227,13 @@ export default function Chat() {
               {!isGroupMessage && (
                 <div>
                   <label className="text-sm font-medium mb-2 block">Primalac</label>
-                  <Select value={selectedReceiver} onValueChange={setSelectedReceiver}>
+                  <Select 
+                    value={selectedReceiver} 
+                    onValueChange={(value) => {
+                      setSelectedReceiver(value);
+                      setTimeout(() => fetchMessages(), 100);
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Izaberi osobu" />
                     </SelectTrigger>
@@ -214,12 +249,18 @@ export default function Chat() {
               )}
 
               <div className="pt-4 border-t">
-                <h4 className="text-sm font-medium mb-2">Aktivni korisnici</h4>
-                <div className="space-y-2">
-                  {profiles.slice(0, 5).map(person => (
-                    <div key={person.id} className="flex items-center gap-2 text-sm">
+                <h4 className="text-sm font-medium mb-2">Korisnici</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {profiles.map(person => (
+                    <div key={person.id} className="flex items-center gap-2 text-sm p-2 rounded hover:bg-muted cursor-pointer"
+                         onClick={() => {
+                           if (!isGroupMessage) {
+                             setSelectedReceiver(person.id);
+                             setTimeout(() => fetchMessages(), 100);
+                           }
+                         }}>
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span>{person.first_name} {person.last_name}</span>
+                      <span className="flex-1">{person.first_name} {person.last_name}</span>
                       <Badge className={`${getRoleColor(person.role)} text-xs`}>
                         {getRoleLabel(person.role)}
                       </Badge>
@@ -237,19 +278,23 @@ export default function Chat() {
             <CardHeader className="flex-shrink-0">
               <CardTitle className="flex items-center gap-2">
                 <MessageCircle className="w-5 h-5" />
-                {isGroupMessage ? 'Grupni chat' : selectedReceiver ? `Chat sa ${profiles.find(p => p.id === selectedReceiver)?.first_name} ${profiles.find(p => p.id === selectedReceiver)?.last_name}` : 'Izaberite osobu za chat'}
+                {isGroupMessage ? 'Grupni chat' : selectedReceiver ? `Chat sa ${getSelectedReceiverName()}` : 'Izaberite osobu za chat'}
               </CardTitle>
             </CardHeader>
             
             {/* Messages Area */}
             <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-              {filteredMessages.map((message) => (
+              {messages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${message.sender_id === profile?.id ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[70%] ${message.sender_id === profile?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'} rounded-lg p-3`}>
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className={`max-w-[70%] rounded-lg p-3 shadow-sm ${
+                    message.sender_id === profile?.id 
+                      ? 'bg-primary text-primary-foreground ml-4' 
+                      : 'bg-muted mr-4'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-2">
                       <User className="w-3 h-3" />
                       <span className="text-xs font-medium">
                         {message.sender?.first_name} {message.sender?.last_name}
@@ -265,10 +310,12 @@ export default function Chat() {
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm">{message.message}</p>
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                      {message.message}
+                    </p>
                     <div className="flex items-center gap-1 mt-2 text-xs opacity-70">
                       <Clock className="w-3 h-3" />
-                      <span>{new Date(message.created_at).toLocaleString('sr-RS')}</span>
+                      <span>{new Date(message.created_at).toLocaleString('bs-BA')}</span>
                     </div>
                   </div>
                 </div>
@@ -282,11 +329,21 @@ export default function Chat() {
                 <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder={isGroupMessage ? "Napišite grupnu poruku..." : selectedReceiver ? "Napišite poruku..." : "Izaberite osobu za chat"}
+                  placeholder={
+                    isGroupMessage 
+                      ? "Napišite grupnu poruku..." 
+                      : selectedReceiver 
+                        ? "Napišite poruku..." 
+                        : "Izaberite osobu za chat"
+                  }
                   disabled={!isGroupMessage && !selectedReceiver}
                   className="flex-1"
+                  maxLength={1000}
                 />
-                <Button type="submit" disabled={!newMessage.trim() || (!isGroupMessage && !selectedReceiver)}>
+                <Button 
+                  type="submit" 
+                  disabled={!newMessage.trim() || (!isGroupMessage && !selectedReceiver)}
+                >
                   <Send className="w-4 h-4" />
                 </Button>
               </form>

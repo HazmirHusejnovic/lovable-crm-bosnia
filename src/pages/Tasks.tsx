@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,44 +10,39 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, Clock, User, Calendar } from 'lucide-react';
+import { Plus, Search, Calendar, User, Clock, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Task {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  progress: number;
-  due_date: string;
-  estimated_hours: number;
-  hours_worked: number;
-  is_billable: boolean;
-  client_id: string;
-  assigned_worker_id: string;
-  service_id: string;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  due_date?: string;
+  assigned_worker_id?: string;
+  client_id?: string;
+  estimated_hours?: number;
+  hours_worked?: number;
+  progress?: number;
+  is_billable?: boolean;
   created_at: string;
-  client?: { first_name: string; last_name: string };
   assigned_worker?: { first_name: string; last_name: string };
-  service?: { name: string };
+  client?: { first_name: string; last_name: string; company?: string };
 }
 
 interface Profile {
   id: string;
   first_name: string;
   last_name: string;
+  company?: string;
   role: string;
-}
-
-interface Service {
-  id: string;
-  name: string;
 }
 
 export default function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
+  const [clients, setClients] = useState<Profile[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -58,19 +54,19 @@ export default function Tasks() {
     title: '',
     description: '',
     status: 'pending' as 'pending' | 'in_progress' | 'completed' | 'cancelled',
-    progress: 0,
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
     due_date: '',
-    estimated_hours: 0,
-    is_billable: false,
-    client_id: '',
     assigned_worker_id: '',
-    service_id: ''
+    client_id: '',
+    estimated_hours: 0,
+    progress: 0,
+    is_billable: false
   });
 
   useEffect(() => {
     fetchTasks();
     fetchProfiles();
-    fetchServices();
+    fetchClients();
   }, []);
 
   const fetchTasks = async () => {
@@ -79,9 +75,8 @@ export default function Tasks() {
         .from('tasks')
         .select(`
           *,
-          client:profiles!tasks_client_id_fkey(first_name, last_name),
           assigned_worker:profiles!tasks_assigned_worker_id_fkey(first_name, last_name),
-          service:services(name)
+          client:profiles!tasks_client_id_fkey(first_name, last_name, company)
         `)
         .order('created_at', { ascending: false });
 
@@ -97,7 +92,8 @@ export default function Tasks() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, role')
+        .select('id, first_name, last_name, company, role')
+        .in('role', ['admin', 'worker'])
         .order('first_name');
 
       if (error) throw error;
@@ -107,18 +103,18 @@ export default function Tasks() {
     }
   };
 
-  const fetchServices = async () => {
+  const fetchClients = async () => {
     try {
       const { data, error } = await supabase
-        .from('services')
-        .select('id, name')
-        .eq('is_active', true)
-        .order('name');
+        .from('profiles')
+        .select('id, first_name, last_name, company, role')
+        .eq('role', 'client')
+        .order('first_name');
 
       if (error) throw error;
-      setServices(data || []);
+      setClients(data || []);
     } catch (error) {
-      console.error('Error fetching services:', error);
+      console.error('Error fetching clients:', error);
     }
   };
 
@@ -126,12 +122,17 @@ export default function Tasks() {
     e.preventDefault();
     
     try {
-      // Convert empty strings to null for UUID fields
       const taskData = {
-        ...formData,
-        client_id: formData.client_id || null,
+        title: formData.title,
+        description: formData.description || null,
+        status: formData.status,
+        priority: formData.priority,
+        due_date: formData.due_date || null,
         assigned_worker_id: formData.assigned_worker_id || null,
-        service_id: formData.service_id || null,
+        client_id: formData.client_id || null,
+        estimated_hours: formData.estimated_hours || null,
+        progress: formData.progress,
+        is_billable: formData.is_billable
       };
 
       if (editingTask) {
@@ -165,13 +166,13 @@ export default function Tasks() {
       title: '',
       description: '',
       status: 'pending',
-      progress: 0,
+      priority: 'medium',
       due_date: '',
-      estimated_hours: 0,
-      is_billable: false,
-      client_id: '',
       assigned_worker_id: '',
-      service_id: ''
+      client_id: '',
+      estimated_hours: 0,
+      progress: 0,
+      is_billable: false
     });
     setEditingTask(null);
   };
@@ -182,13 +183,13 @@ export default function Tasks() {
       title: task.title,
       description: task.description || '',
       status: task.status,
-      progress: task.progress || 0,
+      priority: task.priority || 'medium',
       due_date: task.due_date ? task.due_date.split('T')[0] : '',
-      estimated_hours: task.estimated_hours || 0,
-      is_billable: task.is_billable || false,
-      client_id: task.client_id || '',
       assigned_worker_id: task.assigned_worker_id || '',
-      service_id: task.service_id || ''
+      client_id: task.client_id || '',
+      estimated_hours: task.estimated_hours || 0,
+      progress: task.progress || 0,
+      is_billable: task.is_billable || false
     });
     setIsDialogOpen(true);
   };
@@ -203,21 +204,56 @@ export default function Tasks() {
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
+  const getPriorityColor = (priority: string) => {
+    const colors = {
+      low: 'bg-gray-100 text-gray-800',
+      medium: 'bg-blue-100 text-blue-800',
+      high: 'bg-orange-100 text-orange-800',
+      urgent: 'bg-red-100 text-red-800'
+    };
+    return colors[priority as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels = {
+      pending: 'Na čekanju',
+      in_progress: 'U toku',
+      completed: 'Završeno',
+      cancelled: 'Otkazano'
+    };
+    return labels[status as keyof typeof labels] || status;
+  };
+
+  const getPriorityLabel = (priority: string) => {
+    const labels = {
+      low: 'Nizak',
+      medium: 'Srednji',
+      high: 'Visok',
+      urgent: 'Hitan'
+    };
+    return labels[priority as keyof typeof labels] || priority;
+  };
+
   const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         task.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = 
+      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.assigned_worker?.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.assigned_worker?.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.client?.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.client?.last_name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const clients = profiles.filter(p => p.role === 'client');
-  const workers = profiles.filter(p => ['admin', 'worker'].includes(p.role));
+  // Only admins and workers can manage tasks
+  const canManage = profile?.role === 'admin' || profile?.role === 'worker';
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Zadaci</h1>
-        {(profile?.role === 'admin' || profile?.role === 'worker') && (
+        {canManage && (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={resetForm}>
@@ -225,7 +261,7 @@ export default function Tasks() {
                 Novi zadatak
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>{editingTask ? 'Uredi zadatak' : 'Novi zadatak'}</DialogTitle>
               </DialogHeader>
@@ -262,6 +298,72 @@ export default function Tasks() {
                     </Select>
                   </div>
                   <div>
+                    <Label>Prioritet</Label>
+                    <Select value={formData.priority} onValueChange={(value: any) => setFormData({...formData, priority: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Nizak</SelectItem>
+                        <SelectItem value="medium">Srednji</SelectItem>
+                        <SelectItem value="high">Visok</SelectItem>
+                        <SelectItem value="urgent">Hitan</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Dodijeli radniku</Label>
+                    <Select value={formData.assigned_worker_id} onValueChange={(value) => setFormData({...formData, assigned_worker_id: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Izaberi radnika" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {profiles.map(worker => (
+                          <SelectItem key={worker.id} value={worker.id}>
+                            {worker.first_name} {worker.last_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Klijent</Label>
+                    <Select value={formData.client_id} onValueChange={(value) => setFormData({...formData, client_id: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Izaberi klijenta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients.map(client => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.first_name} {client.last_name} {client.company && `(${client.company})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>Datum dospeća</Label>
+                    <Input
+                      type="date"
+                      value={formData.due_date}
+                      onChange={(e) => setFormData({...formData, due_date: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Procijenjeni sati</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={formData.estimated_hours}
+                      onChange={(e) => setFormData({...formData, estimated_hours: parseFloat(e.target.value) || 0})}
+                    />
+                  </div>
+                  <div>
                     <Label>Napredak (%)</Label>
                     <Input
                       type="number"
@@ -272,73 +374,6 @@ export default function Tasks() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Krajnji rok</Label>
-                    <Input
-                      type="date"
-                      value={formData.due_date}
-                      onChange={(e) => setFormData({...formData, due_date: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label>Procenjeni sati</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      value={formData.estimated_hours}
-                      onChange={(e) => setFormData({...formData, estimated_hours: parseFloat(e.target.value) || 0})}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Klijent</Label>
-                    <Select value={formData.client_id} onValueChange={(value) => setFormData({...formData, client_id: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Izaberi klijenta" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clients.map(client => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.first_name} {client.last_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Radnik</Label>
-                    <Select value={formData.assigned_worker_id} onValueChange={(value) => setFormData({...formData, assigned_worker_id: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Izaberi radnika" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {workers.map(worker => (
-                          <SelectItem key={worker.id} value={worker.id}>
-                            {worker.first_name} {worker.last_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <Label>Usluga</Label>
-                  <Select value={formData.service_id} onValueChange={(value) => setFormData({...formData, service_id: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Izaberi uslugu" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {services.map(service => (
-                        <SelectItem key={service.id} value={service.id}>
-                          {service.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
                 <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -346,7 +381,7 @@ export default function Tasks() {
                     checked={formData.is_billable}
                     onChange={(e) => setFormData({...formData, is_billable: e.target.checked})}
                   />
-                  <Label htmlFor="is_billable">Naplatljivo</Label>
+                  <Label htmlFor="is_billable">Naplativ zadatak</Label>
                 </div>
                 <div className="flex gap-2">
                   <Button type="submit">{editingTask ? 'Ažuriraj' : 'Kreiraj'}</Button>
@@ -386,59 +421,63 @@ export default function Tasks() {
 
       <div className="grid gap-4">
         {filteredTasks.map((task) => (
-          <Card key={task.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleEdit(task)}>
+          <Card key={task.id} className={`cursor-pointer hover:shadow-md transition-shadow ${canManage ? '' : 'pointer-events-none'}`} onClick={() => canManage && handleEdit(task)}>
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
-                <CardTitle className="text-lg">{task.title}</CardTitle>
-                <Badge className={getStatusColor(task.status)}>
-                  {task.status === 'pending' && 'Na čekanju'}
-                  {task.status === 'in_progress' && 'U toku'}
-                  {task.status === 'completed' && 'Završeno'}
-                  {task.status === 'cancelled' && 'Otkazano'}
-                </Badge>
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5" />
+                  <div>
+                    <CardTitle className="text-lg">{task.title}</CardTitle>
+                    {task.description && (
+                      <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Badge className={getStatusColor(task.status)}>
+                    {getStatusLabel(task.status)}
+                  </Badge>
+                  {task.priority && (
+                    <Badge className={getPriorityColor(task.priority)}>
+                      {getPriorityLabel(task.priority)}
+                    </Badge>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              {task.description && (
-                <p className="text-muted-foreground mb-3">{task.description}</p>
-              )}
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                {task.client && (
-                  <div className="flex items-center gap-1">
-                    <User className="w-4 h-4" />
-                    <span>{task.client.first_name} {task.client.last_name}</span>
-                  </div>
-                )}
-                {task.assigned_worker && (
-                  <div className="flex items-center gap-1">
-                    <User className="w-4 h-4" />
-                    <span>Radnik: {task.assigned_worker.first_name} {task.assigned_worker.last_name}</span>
-                  </div>
-                )}
-                {task.due_date && (
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    <span>{new Date(task.due_date).toLocaleDateString('sr-RS')}</span>
-                  </div>
-                )}
-                {task.estimated_hours > 0 && (
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    <span>{task.estimated_hours}h / {task.hours_worked}h</span>
-                  </div>
-                )}
-                {task.service?.name && (
-                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                    {task.service.name}
-                  </span>
-                )}
-                {task.is_billable && (
-                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                    Naplatljivo
-                  </span>
-                )}
+              <div className="flex justify-between items-center">
+                <div className="flex gap-6 text-sm text-muted-foreground">
+                  {task.assigned_worker && (
+                    <div className="flex items-center gap-1">
+                      <User className="w-4 h-4" />
+                      <span>{task.assigned_worker.first_name} {task.assigned_worker.last_name}</span>
+                    </div>
+                  )}
+                  {task.client && (
+                    <div className="flex items-center gap-1">
+                      <User className="w-4 h-4" />
+                      <span>{task.client.first_name} {task.client.last_name}</span>
+                    </div>
+                  )}
+                  {task.due_date && (
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      <span>Dospeće: {new Date(task.due_date).toLocaleDateString('bs-BA')}</span>
+                    </div>
+                  )}
+                  {task.estimated_hours && (
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      <span>{task.estimated_hours}h</span>
+                    </div>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {new Date(task.created_at).toLocaleDateString('bs-BA')}
+                </div>
               </div>
-              {task.progress > 0 && (
+              {task.progress !== undefined && task.progress > 0 && (
                 <div className="mt-3">
                   <div className="flex justify-between text-sm mb-1">
                     <span>Napredak</span>
